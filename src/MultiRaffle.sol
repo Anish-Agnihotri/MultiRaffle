@@ -6,12 +6,12 @@ pragma solidity ^0.8.0;
 import "./interfaces/IERC20.sol"; // ERC20 minified interface
 import "@openzeppelin/contracts/access/Ownable.sol"; // OZ: Ownership
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol"; // OZ: ERC721
-//import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol"; // Chainlink VRF
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol"; // Chainlink VRF
 
 /// @title MultiRaffle
 /// @author Anish Agnihotri
 /// @notice Multi-winner ERC721 distribution (randomized raffle & metadata)
-contract MultiRaffle is Ownable, ERC721 {
+contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
 
     /// ============ Structs ============
 
@@ -113,6 +113,10 @@ contract MultiRaffle is Ownable, ERC721 {
         uint256 _AVAILABLE_SUPPLY,
         uint256 _MAX_PER_ADDRESS
     ) 
+        VRFConsumerBase(
+            _LINK_VRF_COORDINATOR_ADDRESS,
+            _LINK_ADDRESS
+        )
         ERC721(_NFT_NAME, _NFT_SYMBOL)
     {
         LINK_TOKEN = IERC20(_LINK_ADDRESS);
@@ -249,28 +253,26 @@ contract MultiRaffle is Ownable, ERC721 {
         require(!clearingEntropySet, "Clearing entropy already set");
 
         // Request randomness from Chainlink VRF
-        return bytes32("test");
-        //return requestRandomness(KEY_HASH, 2e18);
+        return requestRandomness(KEY_HASH, 2e18);
     }
 
     /// @notice Reveals metadata for all NFTs with reveals pending (batch reveal)
-    function revealPendingMetadata() external {
+    function revealPendingMetadata() external returns (bytes32 requestId) {
         // Ensure raffle has ended
         // Ensure at least 1 NFT has been minted
         // Ensure at least 1 minted NFT requires metadata
         require(nftCount - nftRevealedCount > 0, "No NFTs pending metadata reveal");
         // Ensure contract has sufficient LINK balance
-        //require(LINK_TOKEN.balanceOf(address(this)) >= 2e18, "Insufficient LINK");
+        require(LINK_TOKEN.balanceOf(address(this)) >= 2e18, "Insufficient LINK");
 
         // Request randomness from Chainlink VRF
-        //return bytes32("test");
-        //return requestRandomness(KEY_HASH, 2e18);
+        return requestRandomness(KEY_HASH, 2e18);
     }
 
     /// @notice Fulfills randomness from Chainlink VRF
     /// @param requestId returned id of VRF request
     /// @param randomness random number from VRF
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) external {
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
         // If auction is cleared
         // Or, if auction does not need clearing
         if (clearingEntropySet || raffleEntries.length < AVAILABLE_SUPPLY) {
