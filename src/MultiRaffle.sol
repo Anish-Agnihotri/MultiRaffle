@@ -332,6 +332,7 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
             if (tokenId >= metadatas[i].startIndex && tokenId < metadatas[i].endIndex) {
                 randomness = metadatas[i].entropy;
                 metadataCleared = true;
+                break;
             }
         }
 
