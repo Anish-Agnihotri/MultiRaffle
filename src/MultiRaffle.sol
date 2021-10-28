@@ -141,7 +141,7 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
         // Ensure number of tickets to acquire <= max per address
         require(
             entriesPerAddress[msg.sender] + numTickets <= MAX_PER_ADDRESS, 
-            "Max mints for address reached"
+            "Max entries for address reached"
         );
         // Ensure sufficient raffle ticket payment
         require(msg.value == numTickets * MINT_COST, "Incorrect payment");
