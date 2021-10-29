@@ -43,7 +43,8 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
     uint256 public immutable MAX_PER_ADDRESS;
 
     /// ============ Mutable storage ============
-
+    /// @notice LINK fee paid to oracles
+    uint256 public linkFee = 2e18;
     /// @notice Entropy from Chainlink VRF
     uint256 public entropy;
     /// @notice Number of NFTs minted
@@ -140,7 +141,7 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
         // Ensure number of tickets to acquire <= max per address
         require(
             entriesPerAddress[msg.sender] + numTickets <= MAX_PER_ADDRESS, 
-            "Max mints for address reached"
+            "Max entries for address reached"
         );
         // Ensure sufficient raffle ticket payment
         require(msg.value == numTickets * MINT_COST, "Incorrect payment");
@@ -246,14 +247,14 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
         // Ensure raffle has ended
         require(block.timestamp > RAFFLE_END_TIME, "Raffle still active");
         // Ensure contract has sufficient LINK balance
-        require(LINK_TOKEN.balanceOf(address(this)) >= 2e18, "Insufficient LINK");
+        require(LINK_TOKEN.balanceOf(address(this)) >= linkFee, "Insufficient LINK");
         // Ensure raffle requires entropy (entries !< supply)
         require(raffleEntries.length > AVAILABLE_SUPPLY, "Raffle does not need entropy");
         // Ensure raffle requires entropy (entropy not already set)
         require(!clearingEntropySet, "Clearing entropy already set");
 
         // Request randomness from Chainlink VRF
-        return requestRandomness(KEY_HASH, 2e18);
+        return requestRandomness(KEY_HASH, linkFee);
     }
 
     /// @notice Reveals metadata for all NFTs with reveals pending (batch reveal)
@@ -263,10 +264,10 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
         // Ensure at least 1 minted NFT requires metadata
         require(nftCount - nftRevealedCount > 0, "No NFTs pending metadata reveal");
         // Ensure contract has sufficient LINK balance
-        require(LINK_TOKEN.balanceOf(address(this)) >= 2e18, "Insufficient LINK");
+        require(LINK_TOKEN.balanceOf(address(this)) >= linkFee, "Insufficient LINK");
 
         // Request randomness from Chainlink VRF
-        return requestRandomness(KEY_HASH, 2e18);
+        return requestRandomness(KEY_HASH, linkFee);
     }
 
     /// @notice Fulfills randomness from Chainlink VRF
@@ -319,6 +320,11 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
         emit RaffleProceedsClaimed(msg.sender, proceeds);
     }
 
+    /// @notice Allows contract owner to change LINK fee paid to oracles
+    function changeLinkFee(uint256 _linkFee) external onlyOwner {
+        linkFee = _linkFee;
+    }
+
     /// ============ Developer-defined functions ============
 
     /// @notice Returns metadata about a token (depending on randomness reveal status)
@@ -332,6 +338,7 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
             if (tokenId >= metadatas[i].startIndex && tokenId < metadatas[i].endIndex) {
                 randomness = metadatas[i].entropy;
                 metadataCleared = true;
+                break;
             }
         }
 
