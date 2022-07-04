@@ -172,15 +172,23 @@ contract MultiRaffle is Ownable, ERC721, VRFConsumerBase {
         require(clearingEntropySet, "No entropy to clear raffle");
 
         // Run Fisher-Yates shuffle for AVAILABLE_SUPPLY
-        for (uint256 i = shuffledCount; i < shuffledCount + numShuffles; i++) {
+        address randomTmp;
+        uint256 i = shuffledCount;
+        uint256 limit = shuffledCount + numShuffles;
+        uint256 randomIndex;
+        while(i < limit){
             // Generate a random index to select from
-            uint256 randomIndex = i + entropy % (raffleEntries.length - i);
+            randomIndex = i + entropy % (raffleEntries.length - i);
             // Collect the value at that random index
-            address randomTmp = raffleEntries[randomIndex];
+            randomTmp = raffleEntries[randomIndex];
             // Update the value at the random index to the current value
             raffleEntries[randomIndex] = raffleEntries[i];
             // Update the current value to the value at the random index
             raffleEntries[i] = randomTmp;
+            
+            unchecked {
+                i = i +1;
+            }
         }
 
         // Update number of shuffled entries
